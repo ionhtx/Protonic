@@ -4,10 +4,52 @@ import fs from 'fs'
 import path from 'path'
 
 // Custom Vite plugin to handle visual editor file write requests
+// Custom Vite plugin to handle visual editor file write requests
 function visualEditorApiPlugin() {
+  const configPath = path.resolve('./config.json')
+
   return {
     name: 'protonic-editor-api',
     configureServer(server) {
+      // Endpoint to load settings
+      server.middlewares.use('/api/settings', (req, res, next) => {
+        if (req.url === '/' || req.url === '') {
+          if (req.method === 'GET') {
+            try {
+              let data = {}
+              if (fs.existsSync(configPath)) {
+                data = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+              }
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify(data))
+            } catch (err) {
+              res.statusCode = 500
+              res.end(JSON.stringify({ error: err.message }))
+            }
+            return
+          }
+
+          if (req.method === 'POST') {
+            let body = ''
+            req.on('data', (chunk) => { body += chunk })
+            req.on('end', () => {
+              try {
+                const settings = JSON.parse(body)
+                fs.writeFileSync(configPath, JSON.stringify(settings, null, 2), 'utf8')
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify({ success: true, settings }))
+              } catch (err) {
+                res.statusCode = 500
+                res.end(JSON.stringify({ error: err.message }))
+              }
+            })
+            return
+          }
+        }
+        next()
+      })
+
+      // Endpoint to write changes
       server.middlewares.use('/api/save', (req, res, next) => {
         if (req.method === 'POST') {
           let body = ''

@@ -17,6 +17,55 @@ function App() {
 
   const [saving, setSaving] = useState(false)
 
+  // Settings State
+  const [showSettings, setShowSettings] = useState(false)
+  const [githubToken, setGithubToken] = useState('')
+  const [githubRepo, setGithubRepo] = useState('ionhtx/Protonic')
+  const [notionToken, setNotionToken] = useState('')
+  const [notionDbId, setNotionDbId] = useState('')
+
+  // Load configuration on startup
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.githubToken) setGithubToken(data.githubToken)
+          if (data.githubRepo) setGithubRepo(data.githubRepo)
+          if (data.notionToken) setNotionToken(data.notionToken)
+          if (data.notionDbId) setNotionDbId(data.notionDbId)
+        }
+      } catch (err) {
+        console.error('Failed to load settings', err)
+      }
+    }
+    fetchSettings()
+  }, [])
+
+  const saveSettings = async () => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          githubToken,
+          githubRepo,
+          notionToken,
+          notionDbId
+        })
+      })
+      if (res.ok) {
+        setShowSettings(false)
+        alert('Settings saved locally to config.json!')
+      } else {
+        alert('Failed to save settings')
+      }
+    } catch (err) {
+      alert(`Save error: ${err.message}`)
+    }
+  }
+
   useEffect(() => {
     // Listen to postMessage from the website iframe
     const handleMessage = (event) => {
@@ -104,6 +153,12 @@ function App() {
           <span>Source: GitHub (main)</span>
         </div>
         <div className="action-buttons">
+          <button className="btn-icon" title="Developer Settings" onClick={() => setShowSettings(true)}>
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
           <button className="btn-secondary" onClick={() => setIframeUrl('http://localhost:5173')}>
             Reload Preview
           </button>
@@ -270,6 +325,87 @@ function App() {
           </div>
         </aside>
       </main>
+
+      {/* Developer Settings Modal */}
+      {showSettings && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in">
+            <header className="modal-header">
+              <h2>Developer Configuration</h2>
+              <button className="btn-close" onClick={() => setShowSettings(false)}>&times;</button>
+            </header>
+            <div className="modal-body">
+              {/* GitHub Settings */}
+              <div className="form-group">
+                <label>GitHub Personal Access Token</label>
+                <div className="input-group">
+                  <input 
+                    type="password" 
+                    value={githubToken} 
+                    onChange={(e) => setGithubToken(e.target.value)} 
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                  />
+                </div>
+                <div className="input-help">
+                  Required to push layout and styling changes directly back as commits and PRs.
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>GitHub Repository</label>
+                <div className="input-group">
+                  <input 
+                    type="text" 
+                    value={githubRepo} 
+                    onChange={(e) => setGithubRepo(e.target.value)} 
+                    placeholder="username/repository"
+                  />
+                </div>
+                <div className="input-help">
+                  The target repository format is 'owner/repo' (e.g. ionhtx/Protonic).
+                </div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
+
+              {/* Notion Settings */}
+              <div className="form-group">
+                <label>Notion API Token</label>
+                <div className="input-group">
+                  <input 
+                    type="password" 
+                    value={notionToken} 
+                    onChange={(e) => setNotionToken(e.target.value)} 
+                    placeholder="secret_xxxxxxxxxxxxxxxxxxxx"
+                  />
+                </div>
+                <div className="input-help">
+                  Required to authenticate with Notion's workspace and map your headless content pages.
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Notion Blog Database ID</label>
+                <div className="input-group">
+                  <input 
+                    type="text" 
+                    value={notionDbId} 
+                    onChange={(e) => setNotionDbId(e.target.value)} 
+                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  />
+                </div>
+                <div className="input-help">
+                  The unique 32-character ID of the Notion Blog database to pull feed articles from.
+                </div>
+              </div>
+            </div>
+            <footer className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowSettings(false)}>Cancel</button>
+              <button className="btn-primary" onClick={saveSettings}>Save Config</button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

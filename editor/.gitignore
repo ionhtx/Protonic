@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Protonic Configurations
+config.json
+.env
+.env.*
