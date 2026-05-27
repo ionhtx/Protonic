@@ -1,0 +1,559 @@
+/* Antigravity Design System Custom Tokens */
+:root {
+  --bg-dark: #0b0c10;
+  --bg-panel: #12141c;
+  --bg-element: #1a1d29;
+  --border-color: #242936;
+  
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  --accent-color: #7c3aed; /* Purple */
+  --accent-glow: rgba(124, 58, 237, 0.4);
+  --accent-hover: #8b5cf6;
+  
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Reset and Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Layout */
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Header */
+.editor-header {
+  height: 60px;
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 10;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  background-color: var(--accent-color);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent-color);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(124, 58, 237, 0); }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+}
+
+.logo-section h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.logo-section h1 span {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.branch-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-element);
+  padding: 6px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.branch-selector .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.branch-selector .dot.active {
+  background-color: var(--success-color);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+/* Sidebar Panels */
+.editor-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.editor-sidebar {
+  width: 320px;
+  background-color: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-right: 1px solid var(--border-color);
+}
+
+.editor-sidebar.right {
+  border-right: none;
+  border-left: 1px solid var(--border-color);
+}
+
+/* Tabs */
+.tab-menu {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.tab-menu button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 14px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-menu button:hover {
+  color: var(--text-primary);
+}
+
+.tab-menu button.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.panel-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Element Details & Form Elements */
+.element-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.element-details h3 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.file-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.file-info span {
+  color: var(--text-muted);
+}
+
+.file-info code {
+  color: var(--text-primary);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group textarea {
+  background: var(--bg-element);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 12px;
+  min-height: 80px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group textarea:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.helper-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.diff-preview {
+  margin-top: 10px;
+  background: #06070a;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.diff-preview h4 {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.diff-preview pre {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--success-color);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  gap: 16px;
+  flex: 1;
+  padding: 40px 20px;
+}
+
+.empty-state p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* Preview Canvas (Middle) */
+.editor-canvas {
+  flex: 1;
+  background-color: var(--bg-dark);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.canvas-header {
+  height: 48px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.address-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-element);
+  border: 1px solid var(--border-color);
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  width: 300px;
+}
+
+.viewport-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.viewport-controls button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.viewport-controls button:hover,
+.viewport-controls button.active {
+  color: var(--text-primary);
+  background-color: var(--bg-element);
+}
+
+.iframe-wrapper {
+  flex: 1;
+  border: 1px solid var(--border-color);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  position: relative;
+}
+
+.preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: transparent;
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background-color: var(--accent-color);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 6px;
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+/* Notion Badge and Config */
+.notion-badge {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--warning-color);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.notion-config {
+  background: var(--bg-element);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.db-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.status-label {
+  color: var(--text-secondary);
+}
+
+.badge.connected {
+  color: var(--success-color);
+  background-color: rgba(16, 185, 129, 0.15);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.notion-help {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.btn-sync {
+  background: var(--border-color);
+  color: var(--text-primary);
+  border: 1px solid transparent;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.8rem;
+  width: 100%;
+}
+
+.btn-sync:hover:not(:disabled) {
+  background: var(--accent-color);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.btn-sync.syncing {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Notion Posts Feed */
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.posts-list h4 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.post-item {
+  background: var(--bg-element);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.2s;
+}
+
+.post-item:hover {
+  transform: translateY(-2px);
+}
+
+.post-meta h5 {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.post-status {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.post-status.published {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success-color);
+}
+
+.post-status.draft {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning-color);
+}
+
+.btn-edit-notion {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.btn-edit-notion:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
