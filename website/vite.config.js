@@ -1,46 +1,69 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { transformAsync } from '@babel/core'
 
-// Custom Babel plugin to inject source details into JSX elements
-function reactSourceAttributePlugin({ types: t }) {
+// Custom Vite plugin to transform code using Babel before framework plugins
+function visualEditorSourcePlugin() {
   return {
-    name: 'react-source-attribute-injector',
-    visitor: {
-      JSXOpeningElement(path, state) {
-        const filePath = state.file.opts.filename || ''
-        
-        // Skip files in node_modules and outside of the src directory
-        if (filePath.includes('node_modules') || !filePath.includes('/src/')) {
-          return
-        }
+    name: 'protonic-source-injector',
+    enforce: 'pre',
+    async transform(code, id) {
+      // Process JSX/TSX source files inside src directory
+      const normalizedPath = id.replace(/\\/g, '/').split('?')[0]
+      if (normalizedPath.includes('node_modules') || !normalizedPath.includes('/src/') || !/\.[jt]sx$/.test(normalizedPath)) {
+        return null
+      }
 
-        // Simplify file path to make it relative to src/
-        const relativePath = filePath.replace(/\\/g, '/').split('/src/').pop()
-        const startLine = path.node.loc ? path.node.loc.start.line : null
+      const result = await transformAsync(code, {
+        filename: id,
+        plugins: [
+          function ({ types: t }) {
+            return {
+              name: 'react-source-attribute-injector',
+              visitor: {
+                JSXOpeningElement(path, state) {
+                  // Get file path from state or opts
+                  const filePath = state.file.opts.filename || id || ''
+                  const normPath = filePath.replace(/\\/g, '/')
+                  const relativePath = normPath.split('/src/').pop()
+                  const startLine = path.node.loc ? path.node.loc.start.line : null
 
-        if (relativePath && startLine) {
-          // Check if data attributes already exist to avoid duplicates
-          const hasAttr = path.node.attributes.some(
-            (attr) => attr.name && attr.name.name === 'data-source-file'
-          )
+                  if (relativePath && startLine) {
+                    const hasAttr = path.node.attributes.some(
+                      (attr) => attr.name && attr.name.name === 'data-source-file'
+                    )
 
-          if (!hasAttr) {
-            // Inject data-source-file attribute
-            path.node.attributes.push(
-              t.jsxAttribute(
-                t.jsxIdentifier('data-source-file'),
-                t.stringLiteral(`src/${relativePath}`)
-              )
-            )
-            // Inject data-source-line attribute
-            path.node.attributes.push(
-              t.jsxAttribute(
-                t.jsxIdentifier('data-source-line'),
-                t.stringLiteral(String(startLine))
-              )
-            )
+                    if (!hasAttr) {
+                      path.node.attributes.push(
+                        t.jSXAttribute(
+                          t.jSXIdentifier('data-source-file'),
+                          t.stringLiteral(`src/${relativePath}`)
+                        )
+                      )
+                      path.node.attributes.push(
+                        t.jSXAttribute(
+                          t.jSXIdentifier('data-source-line'),
+                          t.stringLiteral(String(startLine))
+                        )
+                      )
+                    }
+                  }
+                }
+              }
+            }
           }
-        }
+        ],
+        parserOpts: {
+          plugins: ['jsx', 'typescript']
+        },
+        sourceMaps: true
+      })
+
+      if (!result) return null
+
+      return {
+        code: result.code,
+        map: result.map
       }
     }
   }
@@ -49,10 +72,7 @@ function reactSourceAttributePlugin({ types: t }) {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    react({
-      babel: {
-        plugins: [reactSourceAttributePlugin]
-      }
-    })
+    visualEditorSourcePlugin(),
+    react()
   ],
 })
