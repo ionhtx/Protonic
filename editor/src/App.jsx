@@ -24,24 +24,23 @@ function App() {
   const [notionToken, setNotionToken] = useState('')
   const [notionDbId, setNotionDbId] = useState('')
 
-  // Load configuration on startup
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/settings')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.githubToken) setGithubToken(data.githubToken)
-          if (data.githubRepo) setGithubRepo(data.githubRepo)
-          if (data.notionToken) setNotionToken(data.notionToken)
-          if (data.notionDbId) setNotionDbId(data.notionDbId)
-        }
-      } catch (err) {
-        console.error('Failed to load settings', err)
+  const triggerNotionSync = async () => {
+    setNotionSyncing(true)
+    try {
+      const res = await fetch('/api/notion/sync')
+      if (res.ok) {
+        const posts = await res.json()
+        setNotionPosts(posts)
+      } else {
+        const errData = await res.json()
+        alert(`Notion Sync failed: ${errData.error || 'Unknown error'}`)
       }
+    } catch (err) {
+      alert(`Network error syncing Notion: ${err.message}`)
+    } finally {
+      setNotionSyncing(false)
     }
-    fetchSettings()
-  }, [])
+  }
 
   const saveSettings = async () => {
     try {
@@ -58,6 +57,7 @@ function App() {
       if (res.ok) {
         setShowSettings(false)
         alert('Settings saved locally to config.json!')
+        fetchGitStatus()
       } else {
         alert('Failed to save settings')
       }
@@ -65,6 +65,85 @@ function App() {
       alert(`Save error: ${err.message}`)
     }
   }
+
+  // GitHub / Git State
+  const [gitStatus, setGitStatus] = useState('Up to Date')
+  const [hasGitChanges, setHasGitChanges] = useState(false)
+  const [activeBranch, setActiveBranch] = useState('main')
+  const [pushing, setPushing] = useState(false)
+
+  const fetchGitStatus = async () => {
+    try {
+      const res = await fetch('/api/git/status')
+      if (res.ok) {
+        const data = await res.json()
+        setGitStatus(data.status)
+        setHasGitChanges(data.localChanges)
+        setActiveBranch(data.activeBranch)
+      }
+    } catch (err) {
+      console.error('Failed to load git status', err)
+    }
+  }
+
+  const pushToGitHub = async () => {
+    if (!hasGitChanges) {
+      alert('No uncommitted changes to push!')
+      return
+    }
+
+    setPushing(true)
+    try {
+      const res = await fetch('/api/git/commit', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        alert(`Successfully committed changes to new branch: ${data.sessionBranch}!\nPull Request created successfully!`)
+        if (data.prUrl) window.open(data.prUrl, '_blank')
+        fetchGitStatus()
+      } else {
+        alert(`Failed to push to GitHub: ${data.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      alert(`Network error pushing: ${err.message}`)
+    } finally {
+      setPushing(false)
+    }
+  }
+
+  // Load configuration and Notion posts on startup
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.githubToken) setGithubToken(data.githubToken)
+          if (data.githubRepo) setGithubRepo(data.githubRepo)
+          if (data.notionToken) setNotionToken(data.notionToken)
+          if (data.notionDbId) setNotionDbId(data.notionDbId)
+        }
+      } catch (err) {
+        console.error('Failed to load settings', err)
+      }
+    }
+
+    const fetchNotion = async () => {
+      try {
+        const res = await fetch('/api/notion/sync')
+        if (res.ok) {
+          const posts = await res.json()
+          setNotionPosts(posts)
+        }
+      } catch (err) {
+        console.error('Failed to load Notion posts', err)
+      }
+    }
+
+    fetchSettings().then(() => {
+      fetchNotion()
+      fetchGitStatus()
+    })
+  }, [])
 
   useEffect(() => {
     // Listen to postMessage from the website iframe
@@ -131,14 +210,6 @@ function App() {
     }
   }
 
-  const triggerNotionSync = () => {
-    setNotionSyncing(true)
-    setTimeout(() => {
-      setNotionSyncing(false)
-      alert('Sync completed! 2 Blog posts pulled from Notion and updated in preview.')
-    }, 1500)
-  }
-
 
   return (
     <div className="editor-container">
@@ -149,8 +220,8 @@ function App() {
           <h1>Protonic <span>Visual Editor</span></h1>
         </div>
         <div className="branch-selector">
-          <span className="dot active"></span>
-          <span>Source: GitHub (main)</span>
+          <span className={`dot ${hasGitChanges ? 'warning' : 'active'}`} style={{ backgroundColor: hasGitChanges ? 'var(--warning-color)' : 'var(--success-color)' }}></span>
+          <span>Source: GitHub ({activeBranch}) — {gitStatus}</span>
         </div>
         <div className="action-buttons">
           <button className="btn-icon" title="Developer Settings" onClick={() => setShowSettings(true)}>
@@ -162,8 +233,13 @@ function App() {
           <button className="btn-secondary" onClick={() => setIframeUrl('http://localhost:5173')}>
             Reload Preview
           </button>
-          <button className="btn-primary" onClick={() => alert('Committing changes to GitHub...')}>
-            Push to Production
+          <button 
+            className="btn-primary" 
+            onClick={pushToGitHub}
+            disabled={pushing || !hasGitChanges}
+            style={{ opacity: (!hasGitChanges || pushing) ? 0.6 : 1, cursor: (!hasGitChanges || pushing) ? 'not-allowed' : 'pointer' }}
+          >
+            {pushing ? 'Pushing...' : 'Push to Production'}
           </button>
         </div>
       </header>
@@ -316,7 +392,7 @@ function App() {
                     <h5>{post.title}</h5>
                     <span className={`post-status ${post.status.toLowerCase()}`}>{post.status}</span>
                   </div>
-                  <button className="btn-edit-notion" onClick={() => alert('Opening post database in Notion...')}>
+                  <button className="btn-edit-notion" onClick={() => window.open(post.url || 'https://notion.so', '_blank')}>
                     Edit in Notion
                   </button>
                 </div>

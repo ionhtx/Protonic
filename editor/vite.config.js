@@ -49,6 +49,188 @@ function visualEditorApiPlugin() {
         next()
       })
 
+      // Endpoint to fetch Notion CMS database pages
+      server.middlewares.use('/api/notion/sync', async (req, res, next) => {
+        if (req.method === 'GET') {
+          try {
+            let settings = {}
+            if (fs.existsSync(configPath)) {
+              settings = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+            }
+
+            const notionToken = settings.notionToken ? settings.notionToken.trim() : ''
+            const notionDbId = settings.notionDbId ? settings.notionDbId.trim() : ''
+
+            // If credentials are not set or are mock placeholders, return realistic mock data
+            if (!notionToken || !notionDbId || notionToken.includes('mock') || notionDbId.includes('mock')) {
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify([
+                { id: 'mock-1', title: 'Why AST Visual Editors are the Future (Demo)', status: 'Published', url: 'https://notion.so' },
+                { id: 'mock-2', title: 'Integrating Notion as a Headless CMS (Demo)', status: 'Draft', url: 'https://notion.so' },
+                { id: 'mock-3', title: 'Antigravity AI Bridge Walkthrough (Demo)', status: 'Published', url: 'https://notion.so' }
+              ]))
+              return
+            }
+
+            // Real Notion Integration
+            const { Client } = await import('@notionhq/client')
+            const notion = new Client({ auth: notionToken })
+
+            // Query database rows using dataSources.query
+            const response = await notion.dataSources.query({
+              data_source_id: notionDbId
+            })
+
+            const posts = response.results.map((page) => {
+              // Extract page properties robustly
+              const properties = page.properties
+              let title = 'Untitled Article'
+              
+              // Resolve Title property
+              const titleProp = properties.Name || properties.Title || properties.title || properties.name
+              if (titleProp && titleProp.title && titleProp.title.length > 0) {
+                title = titleProp.title[0].plain_text
+              }
+
+              // Resolve Status property
+              let status = 'Published'
+              const statusProp = properties.Status || properties.status
+              if (statusProp && statusProp.select) {
+                status = statusProp.select.name
+              } else if (statusProp && statusProp.status) {
+                status = statusProp.status.name
+              }
+
+              return {
+                id: page.id,
+                title,
+                status,
+                url: page.url
+              }
+            })
+
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(posts))
+          } catch (err) {
+            res.statusCode = 500
+            res.end(JSON.stringify({ error: err.message }))
+          }
+          return
+        }
+        next()
+      })
+
+      // Endpoint to fetch Git branch and change status
+      server.middlewares.use('/api/git/status', async (req, res, next) => {
+        if (req.method === 'GET') {
+          try {
+            const { execSync } = await import('child_process')
+            let status = 'Up to Date'
+            let localChanges = false
+            let activeBranch = 'main'
+
+            try {
+              activeBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim()
+              const diff = execSync('git status --porcelain', { encoding: 'utf8' }).trim()
+              if (diff) {
+                localChanges = true
+                status = 'Local Changes (Uncommitted)'
+              }
+            } catch (gitErr) {
+              console.error('Git command error', gitErr)
+            }
+
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ status, localChanges, activeBranch }))
+          } catch (err) {
+            res.statusCode = 500
+            res.end(JSON.stringify({ error: err.message }))
+          }
+          return
+        }
+        next()
+      })
+
+      // Endpoint to commit, push and create a Pull Request on GitHub
+      server.middlewares.use('/api/git/commit', async (req, res, next) => {
+        if (req.method === 'POST') {
+          try {
+            let settings = {}
+            if (fs.existsSync(configPath)) {
+              settings = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+            }
+
+            const githubToken = settings.githubToken ? settings.githubToken.trim() : ''
+            const githubRepo = settings.githubRepo ? settings.githubRepo.trim() : 'ionhtx/Protonic'
+
+            if (!githubToken || !githubRepo || githubToken.includes('mock')) {
+              res.statusCode = 400
+              res.end(JSON.stringify({ error: 'GitHub PAT credentials not configured or using mock values' }))
+              return
+            }
+
+            const [owner, repo] = githubRepo.split('/')
+            if (!owner || !repo) {
+              res.statusCode = 400
+              res.end(JSON.stringify({ error: 'Invalid repository format. Must be owner/repo.' }))
+              return
+            }
+
+            const { execSync } = await import('child_process')
+            
+            // Check status of modifications
+            const porcelainStatus = execSync('git status --porcelain', { encoding: 'utf8' }).trim()
+            if (!porcelainStatus) {
+              res.statusCode = 400
+              res.end(JSON.stringify({ error: 'No local changes found to push' }))
+              return
+            }
+
+            // Define session branch name
+            const timestamp = Math.floor(Date.now() / 1000)
+            const sessionBranch = `protonic/edit-session-${timestamp}`
+
+            // Git actions: checkout branch, add, commit, push
+            execSync(`git checkout -b ${sessionBranch}`, { encoding: 'utf8' })
+            execSync('git add .', { encoding: 'utf8' })
+            execSync('git commit -m "style(visual): apply layout and content modifications via Protonic"', { encoding: 'utf8' })
+            
+            // Push branch using token authentication
+            const remoteUrl = `https://${githubToken}@github.com/${githubRepo}.git`
+            execSync(`git push ${remoteUrl} ${sessionBranch}`, { encoding: 'utf8' })
+
+            // Return back to main
+            execSync('git checkout main', { encoding: 'utf8' })
+
+            // Call Octokit API to open a Pull Request
+            const { Octokit } = await import('@octokit/rest')
+            const octokit = new Octokit({ auth: githubToken })
+
+            const prResponse = await octokit.pulls.create({
+              owner,
+              repo,
+              title: `Protonic: Visual Editor session updates - ${new Date().toLocaleDateString()}`,
+              head: sessionBranch,
+              base: 'main',
+              body: 'This Pull Request was generated automatically by **Protonic** visual web editor after a design configuration session. It patches layout styling and text nodes in the client workspace files.'
+            })
+
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ 
+              success: true, 
+              sessionBranch, 
+              prUrl: prResponse.data.html_url,
+              prNumber: prResponse.data.number
+            }))
+          } catch (err) {
+            res.statusCode = 500
+            res.end(JSON.stringify({ error: err.message }))
+          }
+          return
+        }
+        next()
+      })
+
       // Endpoint to write changes
       server.middlewares.use('/api/save', (req, res, next) => {
         if (req.method === 'POST') {
