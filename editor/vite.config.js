@@ -231,6 +231,63 @@ function visualEditorApiPlugin() {
         next()
       })
 
+      // Endpoint to run AI Guardrail validation checks before saving changes
+      server.middlewares.use('/api/ai/guard', (req, res, next) => {
+        if (req.method === 'POST') {
+          let body = ''
+          req.on('data', (chunk) => { body += chunk })
+          req.on('end', () => {
+            try {
+              const { file, line, type, originalValue, newValue } = JSON.parse(body)
+
+              let passed = true
+              const warnings = []
+              const errors = []
+
+              if (type === 'content') {
+                // Rule 1: Prevent empty copy
+                if (!newValue.trim()) {
+                  passed = false
+                  errors.push('Visual Copy Error: Content node text cannot be left completely empty.')
+                }
+                // Rule 2: Warn about extremely long copy breaking designs
+                if (newValue.length > 200) {
+                  warnings.push('AI layout advice: Heading or copy exceeds 200 characters. Verify that it fits nicely on mobile viewports.')
+                }
+              }
+
+              if (type === 'styles') {
+                const classes = newValue.split(/\s+/)
+                // Rule 3: Check for mutually exclusive utility classes
+                const flexGridConflict = classes.includes('flex') && classes.includes('grid')
+                if (flexGridConflict) {
+                  passed = false
+                  errors.push("AST layout error: Conflict utility classes. Element cannot have both 'flex' and 'grid' active.")
+                }
+
+                // Rule 4: Verify correct spacing values (padding/margin boundaries)
+                classes.forEach(c => {
+                  if (c.startsWith('p-') || c.startsWith('m-')) {
+                    const val = parseInt(c.split('-')[1], 10)
+                    if (val > 64) {
+                      warnings.push(`AI design advice: Large layout spacing values detected ('${c}'). Check if standard padding fits container boundaries nicely.`)
+                    }
+                  }
+                })
+              }
+
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ passed, errors, warnings }))
+            } catch (err) {
+              res.statusCode = 500
+              res.end(JSON.stringify({ error: err.message }))
+            }
+          })
+          return
+        }
+        next()
+      })
+
       // Endpoint to write changes
       server.middlewares.use('/api/save', (req, res, next) => {
         if (req.method === 'POST') {

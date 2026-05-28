@@ -176,6 +176,38 @@ function App() {
       const originalValue = type === 'content' ? selectedElement.textContent : selectedElement.className
       const newValue = type === 'content' ? editorText : tailwindClasses
 
+      // 1. Run AI Guardrail validation checks
+      const guardResponse = await fetch('/api/ai/guard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file: selectedElement.file,
+          line: selectedElement.line,
+          type,
+          originalValue,
+          newValue
+        })
+      })
+
+      if (guardResponse.ok) {
+        const guardResult = await guardResponse.json()
+        
+        if (!guardResult.passed) {
+          alert(`🚫 Protonic AI Guardrail Blocked this Change:\n\n${guardResult.errors.join('\n')}`)
+          setSaving(false)
+          return
+        }
+
+        if (guardResult.warnings && guardResult.warnings.length > 0) {
+          const confirmProceed = window.confirm(`⚠️ Protonic AI Layout Review Warnings:\n\n${guardResult.warnings.join('\n')}\n\nDo you want to override and apply this change anyway?`)
+          if (!confirmProceed) {
+            setSaving(false)
+            return
+          }
+        }
+      }
+
+      // 2. Commit visual changes
       const response = await fetch('/api/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,6 +232,7 @@ function App() {
         // Temporarily reload the iframe to ensure HMR resolves instantly
         const iframe = document.querySelector('.preview-iframe')
         if (iframe) iframe.src = iframe.src
+        fetchGitStatus()
       } else {
         alert(`Error saving changes: ${data.error}`)
       }
